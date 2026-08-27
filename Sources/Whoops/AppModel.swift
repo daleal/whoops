@@ -26,14 +26,17 @@ final class AppModel: ObservableObject {
     private let proxy = ProxyServer()
     private let packetFilter = PacketFilter(appPID: ProcessInfo.processInfo.processIdentifier, userID: getuid())
     private var proxyFailureDuringEnable: String?
-    private static let targetsKey = "redirectTargets"
+    private static let configDirectory = FileManager.default
+        .homeDirectoryForCurrentUser
+        .appendingPathComponent(".whoops", isDirectory: true)
+    private static let routesFile = configDirectory.appendingPathComponent("routes.json")
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: Self.targetsKey),
+        if let data = try? Data(contentsOf: Self.routesFile),
            let decoded = try? JSONDecoder().decode([RedirectTarget].self, from: data) {
             targets = decoded
         } else {
-            targets = [RedirectTarget(url: "http://remote.dev.fin")]
+            targets = []
         }
 
         proxy.onIntercept = { [weak self] request in
@@ -209,7 +212,14 @@ final class AppModel: ObservableObject {
     }
 
     private func saveTargets() {
-        guard let data = try? JSONEncoder().encode(targets) else { return }
-        UserDefaults.standard.set(data, forKey: Self.targetsKey)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(targets) else { return }
+        do {
+            try FileManager.default.createDirectory(at: Self.configDirectory, withIntermediateDirectories: true)
+            try data.write(to: Self.routesFile, options: .atomic)
+        } catch {
+            appLog.error("Failed to save routes: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
