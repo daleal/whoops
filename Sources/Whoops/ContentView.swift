@@ -4,6 +4,8 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var updater: UpdaterModel
+    @State private var editingRouteID: UUID?
+    @State private var draftURL = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -187,34 +189,80 @@ struct ContentView: View {
     private var routesSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionLabel("ROUTES", count: model.targets.count)
-            ForEach($model.targets) { $target in
-                HStack(spacing: 8) {
-                    Image(systemName: target.parsedURL == nil ? "exclamationmark.triangle.fill" : "globe")
-                        .foregroundStyle(target.parsedURL == nil ? Color.red : .secondary)
-                    TextField("https://remote.dev", text: $target.url)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    Button {
-                        model.removeTarget(id: target.id)
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 11)
-                .frame(height: 38)
-                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
+            ForEach(model.targets) { target in
+                routeRow(target)
             }
             Button {
-                model.addTarget()
+                let target = model.addTarget()
+                editingRouteID = target.id
+                draftURL = target.url
             } label: {
                 Label("Add route", systemImage: "plus")
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.orange)
+            .disabled(editingRouteID != nil)
         }
+    }
+
+    @ViewBuilder
+    private func routeRow(_ target: RedirectTarget) -> some View {
+        let isEditing = editingRouteID == target.id
+        HStack(spacing: 8) {
+            if isEditing {
+                let draftValid = RedirectTarget(url: draftURL).parsedURL != nil
+                Image(systemName: draftValid ? "globe" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(draftValid ? Color.secondary : Color.red)
+                TextField("https://remote.dev", text: $draftURL)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .onSubmit { saveRoute(target) }
+                Button {
+                    saveRoute(target)
+                } label: {
+                    Text("SAVE")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(draftValid ? Color.orange : Color.secondary)
+                .disabled(!draftValid)
+            } else {
+                Image(systemName: target.parsedURL == nil ? "exclamationmark.triangle.fill" : "globe")
+                    .foregroundStyle(target.parsedURL == nil ? Color.red : .secondary)
+                Text(target.url)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .lineLimit(1)
+                Spacer()
+                Button {
+                    editingRouteID = target.id
+                    draftURL = target.url
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .disabled(editingRouteID != nil)
+                Button {
+                    if editingRouteID == target.id { editingRouteID = nil }
+                    model.removeTarget(id: target.id)
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 11)
+        .frame(height: 38)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func saveRoute(_ target: RedirectTarget) {
+        guard RedirectTarget(url: draftURL).parsedURL != nil else { return }
+        model.updateTarget(id: target.id, url: draftURL)
+        editingRouteID = nil
+        draftURL = ""
     }
 
     private func errorBanner(_ message: String) -> some View {

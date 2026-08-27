@@ -73,8 +73,16 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func addTarget() {
-        targets.append(RedirectTarget(url: "https://"))
+    @discardableResult
+    func addTarget() -> RedirectTarget {
+        let target = RedirectTarget(url: "https://")
+        targets.append(target)
+        return target
+    }
+
+    func updateTarget(id: UUID, url: String) {
+        guard let index = targets.firstIndex(where: { $0.id == id }) else { return }
+        targets[index].url = url
     }
 
     func removeTarget(id: UUID) {
