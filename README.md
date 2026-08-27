@@ -16,6 +16,13 @@ open dist/Whoops.app
 
 Run parser and loopback proxy tests with `./scripts/test.sh`.
 
+## Release
+
+Run the `release` workflow from the Actions tab on the `main` branch and choose
+a patch, minor, or major version bump. After tests and the release build pass,
+the workflow updates the app version and publishes a tagged GitHub Release with
+the application ZIP and its SHA-256 checksum.
+
 Enabling interception asks for administrator approval. Whoops installs only a
 runtime `pf` anchor and one loopback alias. A privileged watchdog removes both
 when interception is disabled or the app exits.

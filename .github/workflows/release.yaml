@@ -1,0 +1,90 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Semver bump to publish
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ensure workflow runs from main
+        run: test "$GITHUB_REF_NAME" = "main"
+
+      - name: Run tests
+        run: ./scripts/test.sh
+
+      - name: Bump application version
+        id: version
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          case "$RELEASE_TYPE" in
+            patch) PATCH=$((PATCH + 1)) ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+          esac
+
+          VERSION="$MAJOR.$MINOR.$PATCH"
+          if git rev-parse --verify --quiet "refs/tags/v$VERSION"; then
+            echo "Tag v$VERSION already exists" >&2
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Resources/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" Resources/Info.plist
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build application
+        run: ./scripts/build-app.sh
+
+      - name: Package application
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/Whoops.app "dist/Whoops-v$VERSION.zip"
+          shasum -a 256 "dist/Whoops-v$VERSION.zip" > "dist/Whoops-v$VERSION.zip.sha256"
+
+      - name: Commit release version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add Resources/Info.plist
+          git commit -m "release: v$VERSION"
+          git push origin HEAD:main
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" \
+            "dist/Whoops-v$VERSION.zip" \
+            "dist/Whoops-v$VERSION.zip.sha256" \
+            --target main \
+            --title "v$VERSION" \
+            --generate-notes
