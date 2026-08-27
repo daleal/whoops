@@ -1,0 +1,1 @@
+- The app cannot be armed while you work on the same machine because it intercepts all localhost traffic and your server runs in localhost
