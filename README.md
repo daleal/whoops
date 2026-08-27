@@ -4,6 +4,17 @@ Whoops is a macOS menu bar app that pauses plaintext HTTP connections to
 `localhost`, `127.0.0.1`, and `::1`, then lets you pass them through or route
 them to a configured HTTP/HTTPS origin.
 
+## Install
+
+1. Download the ZIP from the [latest release](https://github.com/daleal/whoops/releases).
+2. Extract it and move `Whoops.app` to `Applications`.
+3. Remove the quarantine attribute (the app is not notarized, so macOS blocks
+   it otherwise):
+
+```sh
+xattr -d com.apple.quarantine /Applications/Whoops.app
+```
+
 ## Build
 
 Requires macOS 13 or newer and the Swift command-line tools.

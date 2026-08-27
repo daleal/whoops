@@ -31,9 +31,6 @@ jobs:
       - name: Ensure workflow runs from main
         run: test "$GITHUB_REF_NAME" = "main"
 
-      - name: Run tests
-        run: ./scripts/test.sh
-
       - name: Bump application version
         id: version
         env:

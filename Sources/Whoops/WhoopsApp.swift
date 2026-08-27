@@ -16,6 +16,9 @@ struct WhoopsApp: App {
 @MainActor
 private final class AppDelegate: NSObject, NSApplicationDelegate {
     private let model = AppModel()
+    private lazy var updater = UpdaterModel { [weak self] in
+        self?.model.quit()
+    }
     private let popover = NSPopover()
     private var statusItem: NSStatusItem?
     private var pendingObservation: AnyCancellable?
@@ -27,7 +30,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover.behavior = .applicationDefined
         popover.contentSize = NSSize(width: 430, height: 620)
-        popover.contentViewController = NSHostingController(rootView: ContentView(model: model))
+        popover.contentViewController = NSHostingController(rootView: ContentView(model: model, updater: updater))
 
         if let button = statusItem.button {
             button.target = self

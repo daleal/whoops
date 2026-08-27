@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var updater: UpdaterModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -251,9 +252,7 @@ struct ContentView: View {
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
             Spacer()
-            Text("v\(appVersion)")
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.tertiary)
+            updateControl
             Button("Quit") { model.quit() }
                 .buttonStyle(.plain)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
@@ -263,8 +262,29 @@ struct ContentView: View {
         .frame(height: 38)
     }
 
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    @ViewBuilder
+    private var updateControl: some View {
+        switch updater.status {
+        case .available(let version):
+            Button("UPDATE \u{2192} v\(version)") { updater.update() }
+                .buttonStyle(.plain)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(Color.orange)
+        case .updating:
+            Text("UPDATING...")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(Color.orange)
+        case .failed(let message):
+            Button("UPDATE FAILED") { updater.update() }
+                .buttonStyle(.plain)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundStyle(Color.red)
+                .help(message)
+        case .idle, .checking:
+            Text("v\(updater.currentVersion)")
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(.tertiary)
+        }
     }
 
     private var statusTitle: String {
