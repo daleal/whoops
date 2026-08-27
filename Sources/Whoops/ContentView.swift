@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct ContentView: View {
@@ -250,6 +251,9 @@ struct ContentView: View {
                 .font(.system(size: 9, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
             Spacer()
+            Text("v\(appVersion)")
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(.tertiary)
             Button("Quit") { model.quit() }
                 .buttonStyle(.plain)
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
@@ -257,6 +261,10 @@ struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 38)
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
     private var statusTitle: String {
